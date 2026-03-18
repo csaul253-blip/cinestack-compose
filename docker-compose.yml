@@ -1,0 +1,129 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: cinestack-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: cinestack
+      POSTGRES_USER: cinestack
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - cinestack
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cinestack"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  cinestack-api:
+    image: ghcr.io/csaul253-blip/cinestack-api:latest
+    container_name: cinestack-api
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      PORT: 3004
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: cinestack
+      DB_USER: cinestack
+      DB_PASSWORD: ${DB_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET}
+      RADARR_URL: http://radarr:7878
+      SONARR_URL: http://sonarr:8989
+      PROWLARR_URL: http://prowlarr:9696
+      RADARR_API_KEY: ${RADARR_API_KEY}
+      SONARR_API_KEY: ${SONARR_API_KEY}
+      PROWLARR_API_KEY: ${PROWLARR_API_KEY}
+      JELLYFIN_URL: ${JELLYFIN_URL}
+      JELLYFIN_API_KEY: ${JELLYFIN_API_KEY}
+    networks:
+      - cinestack
+
+  cinestack-frontend:
+    image: ghcr.io/csaul253-blip/cinestack-frontend:latest
+    container_name: cinestack-frontend
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      - cinestack-api
+    networks:
+      - cinestack
+
+  radarr:
+    image: lscr.io/linuxserver/radarr:latest
+    container_name: cinestack-radarr
+    restart: unless-stopped
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=${TZ}
+    volumes:
+      - radarr-config:/config
+      - ${MEDIA_PATH}/movies:/movies
+      - ${MEDIA_PATH}/downloads:/downloads
+    ports:
+      - "127.0.0.1:7879:7878"
+    networks:
+      - cinestack
+
+  sonarr:
+    image: lscr.io/linuxserver/sonarr:latest
+    container_name: cinestack-sonarr
+    restart: unless-stopped
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=${TZ}
+    volumes:
+      - sonarr-config:/config
+      - ${MEDIA_PATH}/tv:/tv
+      - ${MEDIA_PATH}/downloads:/downloads
+    ports:
+      - "127.0.0.1:8990:8989"
+    networks:
+      - cinestack
+
+  prowlarr:
+    image: lscr.io/linuxserver/prowlarr:latest
+    container_name: cinestack-prowlarr
+    restart: unless-stopped
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=${TZ}
+    volumes:
+      - prowlarr-config:/config
+    ports:
+      - "127.0.0.1:9696:9696"
+    networks:
+      - cinestack
+
+  jellyfin:
+    image: jellyfin/jellyfin:latest
+    container_name: cinestack-jellyfin
+    restart: unless-stopped
+    network_mode: host
+    environment:
+      - JELLYFIN_PublishedServerUrl=${JELLYFIN_URL}
+    volumes:
+      - jellyfin-config:/config
+      - jellyfin-cache:/cache
+      - ${MEDIA_PATH}:/media
+
+networks:
+  cinestack:
+    driver: bridge
+
+volumes:
+  postgres-data:
+  radarr-config:
+  sonarr-config:
+  prowlarr-config:
+  jellyfin-config:
+  jellyfin-cache:

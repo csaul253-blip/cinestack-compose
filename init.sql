@@ -1,0 +1,48 @@
+CREATE TABLE IF NOT EXISTS users (
+  id SERIAL PRIMARY KEY,
+  email VARCHAR(255) UNIQUE NOT NULL,
+  password_hash VARCHAR(255) NOT NULL,
+  role VARCHAR(50) DEFAULT 'user',
+  display_name VARCHAR(255),
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS requests (
+  id SERIAL PRIMARY KEY,
+  title VARCHAR(255) NOT NULL,
+  type VARCHAR(50) NOT NULL,
+  status VARCHAR(50) DEFAULT 'pending',
+  progress INTEGER DEFAULT 0,
+  tmdb_id INTEGER,
+  poster_path VARCHAR(255),
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS downloads (
+  id SERIAL PRIMARY KEY,
+  title VARCHAR(255) NOT NULL,
+  type VARCHAR(50) NOT NULL,
+  status VARCHAR(50) DEFAULT 'queued',
+  progress INTEGER DEFAULT 0,
+  speed VARCHAR(50),
+  eta VARCHAR(50),
+  file_size VARCHAR(50),
+  tmdb_id INTEGER,
+  poster_path VARCHAR(255),
+  request_id INTEGER REFERENCES requests(id),
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS waitlist (
+  id SERIAL PRIMARY KEY,
+  email VARCHAR(255) UNIQUE NOT NULL,
+  name VARCHAR(255),
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS settings (
+  id SERIAL PRIMARY KEY,
+  key VARCHAR(255) UNIQUE NOT NULL,
+  value TEXT,
+  updated_at TIMESTAMP DEFAULT NOW()
+);
